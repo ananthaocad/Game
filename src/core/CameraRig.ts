@@ -45,7 +45,7 @@ export class CameraRig {
     const worldDx = -dxPixels * worldPerPixel;
     const worldDy = dyPixels * worldPerPixel;
     this.target.addScaledVector(this.right, worldDx);
-    this.target.addScaledVector(this.forwardGround, -worldDy);
+    this.target.addScaledVector(this.forwardGround, worldDy);
     this.sync();
   }
 
