@@ -17,8 +17,17 @@ export class CameraRig {
   private readonly dir: THREE.Vector3;
   private readonly right: THREE.Vector3;
   private readonly forwardGround: THREE.Vector3;
+  private readonly panBound: number;
 
-  constructor(aspect: number) {
+  /**
+   * @param panBound How far the look-at target may travel from the origin
+   * on each ground axis. Keeping it at the world's half-extent means the
+   * screen center — and therefore the farthest a ground edge can be
+   * dragged into view — never goes past the middle of the viewport, so
+   * players can't pan off into empty space and lose their bearings.
+   */
+  constructor(aspect: number, panBound = 30) {
+    this.panBound = panBound;
     this.dir = new THREE.Vector3(1, 1.3, 1).normalize();
     const forward3 = this.dir.clone().negate();
     this.forwardGround = new THREE.Vector3(forward3.x, 0, forward3.z).normalize();
@@ -46,13 +55,20 @@ export class CameraRig {
     const worldDy = dyPixels * worldPerPixel;
     this.target.addScaledVector(this.right, worldDx);
     this.target.addScaledVector(this.forwardGround, worldDy);
+    this.clampTarget();
     this.sync();
   }
 
   zoomBy(delta: number, aspect: number): void {
     this.zoomLevel = THREE.MathUtils.clamp(this.zoomLevel + delta, this.minZoom, this.maxZoom);
     this.setAspect(aspect);
+    this.clampTarget();
     this.sync();
+  }
+
+  private clampTarget(): void {
+    this.target.x = THREE.MathUtils.clamp(this.target.x, -this.panBound, this.panBound);
+    this.target.z = THREE.MathUtils.clamp(this.target.z, -this.panBound, this.panBound);
   }
 
   private sync(): void {

@@ -10,6 +10,7 @@ import { Villager } from '../entities/Villager';
 import { HUD } from '../ui/HUD';
 
 const HORIZON_COLOR = 0xdcefe6;
+const WORLD_SIZE = 60;
 
 interface HitResult {
   type: 'villager' | 'tree' | 'townCenter' | 'terrain' | 'none';
@@ -43,13 +44,13 @@ export class Game {
 
     this.scene.fog = new THREE.Fog(HORIZON_COLOR, 30, 75);
 
-    this.cameraRig = new CameraRig(this.aspect);
+    this.cameraRig = new CameraRig(this.aspect, WORLD_SIZE / 2);
     this.hud = new HUD(hudRoot);
 
     this.scene.add(createSkyDome());
     this.setupLights();
 
-    const terrain = createTerrain({ size: 60 });
+    const terrain = createTerrain({ size: WORLD_SIZE });
     terrain.userData.entityType = 'terrain';
     this.scene.add(terrain);
     this.interactables.push(terrain);
