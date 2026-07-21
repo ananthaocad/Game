@@ -34,9 +34,9 @@ export function createSkyDome(): THREE.Mesh {
   const geometry = new THREE.SphereGeometry(500, 32, 16);
   const material = new THREE.ShaderMaterial({
     uniforms: {
-      topColor: { value: new THREE.Color(0x4f9bd6) },
-      horizonColor: { value: new THREE.Color(0xdcefe6) },
-      bottomColor: { value: new THREE.Color(0xf3e6c8) },
+      topColor: { value: new THREE.Color(0x7a7568) },
+      horizonColor: { value: new THREE.Color(0xc9a878) },
+      bottomColor: { value: new THREE.Color(0x4a4238) },
       offset: { value: 20 },
       exponent: { value: 0.6 },
     },

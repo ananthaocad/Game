@@ -1,39 +1,59 @@
 import * as THREE from 'three';
 import { CameraRig } from './CameraRig';
-import { InputController, type TapEvent } from './InputController';
+import { InputController } from './InputController';
+import { MovementInput } from './MovementInput';
 import { createSkyDome } from '../render/SkyDome';
 import { createTerrain } from '../render/Terrain';
-import { createSelectionRing } from '../entities/meshFactories';
-import { Tree } from '../entities/Tree';
-import { TownCenter } from '../entities/TownCenter';
-import { Villager } from '../entities/Villager';
+import { createRubbleMesh, createBrokenWallMesh, createDeadTreeMesh } from '../entities/meshFactories';
+import { Player } from '../entities/Player';
+import { Artifact, ARTIFACT_PICKUP_RADIUS } from '../entities/Artifact';
+import { Beacon, BEACON_REACH_RADIUS } from '../entities/Beacon';
 import { HUD } from '../ui/HUD';
 
-const HORIZON_COLOR = 0xdcefe6;
-const WORLD_SIZE = 60;
+const HORIZON_COLOR = 0xc9a878;
+const WORLD_SIZE = 90;
 
-interface HitResult {
-  type: 'villager' | 'tree' | 'townCenter' | 'terrain' | 'none';
-  entity?: Villager | Tree | TownCenter;
-  point?: THREE.Vector3;
-}
+const ARTIFACT_POSITIONS: [number, number][] = [
+  [10, -8],
+  [-14, 6],
+  [6, 14],
+  [-9, -16],
+];
+
+type DecorKind = 'rubble' | 'wall' | 'deadTree';
+
+const DECOR_POSITIONS: [number, number, DecorKind][] = [
+  [4, -4, 'wall'],
+  [-6, 3, 'rubble'],
+  [8, 6, 'deadTree'],
+  [-11, -5, 'wall'],
+  [3, 10, 'rubble'],
+  [-4, -10, 'deadTree'],
+  [13, 2, 'rubble'],
+  [-16, 10, 'wall'],
+  [1, -18, 'deadTree'],
+  [-2, 18, 'rubble'],
+  [17, -12, 'wall'],
+  [-18, -8, 'rubble'],
+];
+
+const BEACON_POSITION: [number, number] = [0, -34];
+
+type MissionStage = 'collect' | 'beacon' | 'complete';
 
 export class Game {
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene = new THREE.Scene();
   private readonly cameraRig: CameraRig;
-  private readonly input: InputController;
+  private readonly movement: MovementInput;
   private readonly hud: HUD;
-  private readonly raycaster = new THREE.Raycaster();
   private readonly clock = new THREE.Clock();
 
-  private readonly interactables: THREE.Object3D[] = [];
-  private readonly trees: Tree[] = [];
-  private readonly villagers: Villager[] = [];
-  private readonly townCenter: TownCenter;
-  private readonly selectionRing: THREE.Mesh;
-  private selected: Villager | null = null;
-  private wood = 0;
+  private readonly player: Player;
+  private readonly artifacts: Artifact[] = [];
+  private readonly beacon: Beacon;
+  private artifactsFound = 0;
+  private missionStage: MissionStage = 'collect';
 
   constructor(canvas: HTMLCanvasElement, hudRoot: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -42,39 +62,36 @@ export class Game {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
-    this.scene.fog = new THREE.Fog(HORIZON_COLOR, 30, 75);
+    this.scene.fog = new THREE.Fog(HORIZON_COLOR, 22, 68);
 
     this.cameraRig = new CameraRig(this.aspect, WORLD_SIZE / 2);
     this.hud = new HUD(hudRoot);
+    this.movement = new MovementInput(hudRoot);
 
     this.scene.add(createSkyDome());
     this.setupLights();
 
     const terrain = createTerrain({ size: WORLD_SIZE });
-    terrain.userData.entityType = 'terrain';
     this.scene.add(terrain);
-    this.interactables.push(terrain);
 
-    this.townCenter = new TownCenter(new THREE.Vector3(0, 0, 0));
-    this.scene.add(this.townCenter.group);
-    this.interactables.push(this.townCenter.group);
+    this.spawnDecor();
 
-    this.spawnTrees();
+    this.player = new Player(new THREE.Vector3(0, 0, 0), WORLD_SIZE / 2);
+    this.scene.add(this.player.group);
 
-    const villager = new Villager(new THREE.Vector3(1.6, 0, 2.4), this.townCenter, (amount) =>
-      this.depositWood(amount)
-    );
-    this.villagers.push(villager);
-    this.scene.add(villager.group);
-    this.interactables.push(villager.group);
+    for (const [x, z] of ARTIFACT_POSITIONS) {
+      const artifact = new Artifact(new THREE.Vector3(x, 0, z));
+      this.artifacts.push(artifact);
+      this.scene.add(artifact.group);
+    }
 
-    this.selectionRing = createSelectionRing();
-    this.scene.add(this.selectionRing);
+    this.beacon = new Beacon(new THREE.Vector3(BEACON_POSITION[0], 0, BEACON_POSITION[1]));
+    this.scene.add(this.beacon.group);
 
-    this.select(villager);
+    this.hud.setArtifactCount(0, this.artifacts.length);
+    this.hud.setMission('Recover the scattered artifacts');
 
-    this.input = new InputController(canvas, this.cameraRig, () => this.aspect);
-    this.input.setTapHandler((e) => this.handleTap(e));
+    new InputController(canvas, this.cameraRig, () => this.aspect);
 
     window.addEventListener('resize', () => this.handleResize());
     this.handleResize();
@@ -85,10 +102,10 @@ export class Game {
   }
 
   private setupLights(): void {
-    const hemi = new THREE.HemisphereLight(0xbfe0ff, 0xcf9f5f, 0.9);
+    const hemi = new THREE.HemisphereLight(0x9a8f7a, 0x5c5245, 0.85);
     this.scene.add(hemi);
 
-    const sun = new THREE.DirectionalLight(0xfff2d8, 1.4);
+    const sun = new THREE.DirectionalLight(0xffceac, 1.1);
     sun.position.set(14, 22, 10);
     sun.castShadow = true;
     sun.shadow.mapSize.set(1024, 1024);
@@ -102,22 +119,13 @@ export class Game {
     this.scene.add(sun);
   }
 
-  private spawnTrees(): void {
-    const positions = [
-      [4.5, -3.5],
-      [5.6, -1.2],
-      [3.8, -1.6],
-      [-5.2, 3.8],
-      [-6.4, 1.9],
-      [-4.6, 5.1],
-      [6.2, 4.4],
-      [-3.4, -5.6],
-    ];
-    for (const [x, z] of positions) {
-      const tree = new Tree(new THREE.Vector3(x, 0, z));
-      this.trees.push(tree);
-      this.scene.add(tree.group);
-      this.interactables.push(tree.group);
+  private spawnDecor(): void {
+    for (const [x, z, kind] of DECOR_POSITIONS) {
+      const prop =
+        kind === 'rubble' ? createRubbleMesh() : kind === 'wall' ? createBrokenWallMesh() : createDeadTreeMesh();
+      prop.position.set(x, 0, z);
+      prop.rotation.y = Math.random() * Math.PI * 2;
+      this.scene.add(prop);
     }
   }
 
@@ -132,66 +140,52 @@ export class Game {
     this.cameraRig.setAspect(this.aspect);
   }
 
-  private depositWood(amount: number): void {
-    this.wood += amount;
-    this.hud.setWood(this.wood);
-  }
-
-  private select(villager: Villager | null): void {
-    this.selected = villager;
-    this.selectionRing.visible = !!villager;
-    this.hud.setSelection(villager ? `Villager — ${villager.task}` : null);
-  }
-
-  private handleTap(e: TapEvent): void {
-    const rect = this.renderer.domElement.getBoundingClientRect();
-    const ndc = new THREE.Vector2(
-      ((e.clientX - rect.left) / rect.width) * 2 - 1,
-      -((e.clientY - rect.top) / rect.height) * 2 + 1
-    );
-    this.raycaster.setFromCamera(ndc, this.cameraRig.camera);
-    const hits = this.raycaster.intersectObjects(this.interactables, true);
-    if (hits.length === 0) return;
-
-    const result = this.resolveHit(hits[0]);
-    switch (result.type) {
-      case 'villager':
-        this.select(result.entity as Villager);
-        break;
-      case 'tree':
-        this.selected?.commandGather(result.entity as Tree);
-        break;
-      case 'terrain':
-        if (this.selected && result.point) this.selected.commandMove(result.point);
-        break;
-      default:
-        break;
-    }
-  }
-
-  private resolveHit(hit: THREE.Intersection): HitResult {
-    let obj: THREE.Object3D | null = hit.object;
-    while (obj && !obj.userData.entityType) {
-      obj = obj.parent;
-    }
-    if (!obj) return { type: 'none' };
-    const type = obj.userData.entityType as HitResult['type'];
-    if (type === 'terrain') return { type, point: hit.point };
-    return { type, entity: obj.userData.entity };
-  }
-
   private tick(): void {
     const dt = Math.min(this.clock.getDelta(), 0.1);
 
-    for (const villager of this.villagers) {
-      villager.update(dt);
-    }
+    const move = this.movement.getVector();
+    const worldDir = this.cameraRig.worldDirection(move.x, move.y);
+    this.player.update(worldDir.x, worldDir.z, dt);
+    this.cameraRig.followTarget(this.player.position, dt);
 
-    if (this.selected) {
-      this.selectionRing.position.set(this.selected.position.x, 0.02, this.selected.position.z);
-      this.hud.setSelection(`Villager — ${this.selected.task}`);
-    }
+    this.updateArtifacts(dt);
+    this.beacon.update(dt);
+    this.updateMission();
 
     this.renderer.render(this.scene, this.cameraRig.camera);
+  }
+
+  private updateArtifacts(dt: number): void {
+    for (const artifact of this.artifacts) {
+      if (artifact.collected) continue;
+      artifact.update(dt);
+      const dist = artifact.position.distanceTo(this.player.position);
+      if (dist <= ARTIFACT_PICKUP_RADIUS) {
+        artifact.collect();
+        this.artifactsFound += 1;
+        this.hud.setArtifactCount(this.artifactsFound, this.artifacts.length);
+        this.hud.showToast('Artifact recovered');
+      }
+    }
+  }
+
+  private updateMission(): void {
+    if (this.missionStage === 'collect' && this.artifactsFound >= this.artifacts.length) {
+      this.missionStage = 'beacon';
+      this.beacon.setActive(true);
+      this.hud.setMission('A signal calls — reach the beacon');
+      this.hud.showToast('New objective: reach the beacon');
+      return;
+    }
+
+    if (this.missionStage === 'beacon' && !this.beacon.reached) {
+      const dist = this.beacon.position.distanceTo(this.player.position);
+      if (dist <= BEACON_REACH_RADIUS) {
+        this.beacon.reached = true;
+        this.missionStage = 'complete';
+        this.hud.setMission('Signal secured. The wasteland is quiet — for now.');
+        this.hud.showToast('Mission complete');
+      }
+    }
   }
 }

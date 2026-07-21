@@ -1,20 +1,24 @@
-# Dune & Dominion
+# Ashfall
 
-A mobile-first, web-based 3D strategy/RPG prototype built with Three.js,
+A mobile-first, web-based 3D exploration prototype built with Three.js,
 using a painterly cel-shaded rendering style inspired by *Breath of the
 Wild* / *Tears of the Kingdom* (soft gradient-ramp toon shading, fresnel
-rim light, hand-painted-looking blotch textures, watercolor sky gradient).
+rim light, hand-painted-looking blotch textures, watercolor sky gradient),
+reworked into a dusty post-apocalyptic wasteland palette.
 
 ## Current slice
 
-An Age-of-Empires-style economy loop vertical slice:
+A free-roam exploration + small-mission vertical slice:
 
-- Fixed-angle orthographic (isometric) camera — drag to pan, pinch/wheel to zoom
-- Tap a villager to select it, tap a tree to send it gathering, tap the
-  ground to move it
-- Villager walks to the tree, chops, carries wood back to the town
-  center, and repeats until the tree is depleted
-- Wood counter HUD
+- Fixed-angle orthographic (isometric) camera that follows the player;
+  pinch/wheel to zoom
+- Virtual joystick (touch) or WASD/arrow keys (desktop) move the survivor
+  directly around a ruined wasteland scattered with rubble, broken walls,
+  and dead trees
+- Scavenge glowing artifacts scattered across the map by walking up to them
+- Once every artifact is recovered, a signal beacon lights up in the
+  distance — reach it to complete the mission
+- HUD: artifact counter, mission objective banner, pickup/objective toasts
 
 ## Develop
 
@@ -38,16 +42,16 @@ npm run preview
 
 ```
 src/
-  core/       Game orchestration, camera rig, input handling
+  core/       Game orchestration, camera rig, zoom input, movement input
   render/     Painterly toon material, sky dome, terrain generation
-  entities/   Villager, Tree, TownCenter, low-poly mesh factories
-  ui/         HUD
+  entities/   Player, Artifact, Beacon, low-poly mesh factories
+  ui/         HUD, virtual joystick
 ```
 
 ## Next steps
 
-- More unit types (soldier, scout) and combat
-- Buildings you can place (barracks, farm) and a build menu
-- Fog of war
-- Multiple resources (food, gold, stone) and a simple tech tree
+- More mission variety (timed objectives, escort/defend, fetch chains)
+- Enemies/hazards to avoid or fight
+- Persistent artifact/inventory collection across missions
+- Fog of war / limited visibility for tension
 - Save/load and a title screen

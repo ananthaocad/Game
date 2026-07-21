@@ -11,10 +11,10 @@ export function createTerrain(config: TerrainConfig): THREE.Mesh {
   geometry.rotateX(-Math.PI / 2);
 
   const texture = generateBlotchTexture({
-    base: '#8fbf6a',
-    blotches: ['#a4d17f', '#79aa57', '#c8dd8f', '#6f9c4d'],
+    base: '#8a7a5f',
+    blotches: ['#a08b68', '#6f6250', '#5c5548', '#b79a6e'],
     size: 1024,
-    blotchCount: 220,
+    blotchCount: 260,
     seed: 42,
   });
   texture.repeat.set(config.size / 6, config.size / 6);
@@ -22,8 +22,8 @@ export function createTerrain(config: TerrainConfig): THREE.Mesh {
   const material = createPainterlyMaterial({
     color: 0xffffff,
     map: texture,
-    rimColor: 0xfff6e0,
-    rimIntensity: 0.12,
+    rimColor: 0xd8c9a3,
+    rimIntensity: 0.1,
   });
 
   const mesh = new THREE.Mesh(geometry, material);

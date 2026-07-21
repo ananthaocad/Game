@@ -4,19 +4,20 @@ const WORLD_UP = new THREE.Vector3(0, 1, 0);
 
 /**
  * Fixed-angle orthographic camera in the Age-of-Empires mold: it never
- * rotates, only pans across the ground plane and zooms via frustum size.
+ * rotates, only follows a target across the ground plane and zooms via
+ * frustum size.
  */
 export class CameraRig {
   readonly camera: THREE.OrthographicCamera;
   readonly target = new THREE.Vector3(0, 0, 0);
+  readonly right: THREE.Vector3;
+  readonly forwardGround: THREE.Vector3;
 
-  private zoomLevel = 13;
-  private readonly minZoom = 6;
-  private readonly maxZoom = 26;
+  private zoomLevel = 12;
+  private readonly minZoom = 7;
+  private readonly maxZoom = 28;
   private readonly distance = 40;
   private readonly dir: THREE.Vector3;
-  private readonly right: THREE.Vector3;
-  private readonly forwardGround: THREE.Vector3;
   private readonly panBound: number;
 
   /**
@@ -48,13 +49,15 @@ export class CameraRig {
     this.camera.updateProjectionMatrix();
   }
 
-  /** Pan in screen-space units; automatically scaled by current zoom. */
-  panScreen(dxPixels: number, dyPixels: number, viewportHeight: number): void {
-    const worldPerPixel = (this.zoomLevel * 2) / viewportHeight;
-    const worldDx = -dxPixels * worldPerPixel;
-    const worldDy = dyPixels * worldPerPixel;
-    this.target.addScaledVector(this.right, worldDx);
-    this.target.addScaledVector(this.forwardGround, worldDy);
+  /** Combines screen-relative right/forward weights into a world-space ground direction. */
+  worldDirection(right: number, forward: number): THREE.Vector3 {
+    return new THREE.Vector3().addScaledVector(this.right, right).addScaledVector(this.forwardGround, forward);
+  }
+
+  /** Smoothly glides the look-at target toward a world position (e.g. the player). */
+  followTarget(position: THREE.Vector3, dt: number): void {
+    const followStrength = 1 - Math.pow(0.001, dt);
+    this.target.lerp(position, followStrength);
     this.clampTarget();
     this.sync();
   }
