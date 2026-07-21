@@ -1,5 +1,8 @@
 export class HUD {
-  private readonly artifactValueEl: HTMLElement;
+  private readonly healthFillEl: HTMLElement;
+  private readonly hungerValueEl: HTMLElement;
+  private readonly thirstValueEl: HTMLElement;
+  private readonly backpackButtonEl: HTMLElement;
   private readonly missionTextEl: HTMLElement;
   private readonly toastEl: HTMLElement;
   private readonly hintEl: HTMLElement;
@@ -8,13 +11,23 @@ export class HUD {
   constructor(root: HTMLElement) {
     root.innerHTML = `
       <div class="top-bar">
-        <div class="resource-pill"><span class="icon">◆</span><span id="artifact-value">0/0</span></div>
+        <div class="stat-pills">
+          <div class="health-pill">
+            <div class="health-fill" id="health-fill"></div>
+          </div>
+          <div class="resource-pill"><span class="icon">\u{1F357}</span><span id="hunger-value">100</span></div>
+          <div class="resource-pill"><span class="icon">\u{1F4A7}</span><span id="thirst-value">100</span></div>
+        </div>
+        <button class="icon-btn backpack-btn" id="backpack-btn">\u{1F392}</button>
       </div>
       <div class="mission-banner" id="mission-banner"></div>
       <div class="hint" id="hint">Drag the stick to move · Pinch or scroll to zoom</div>
       <div class="toast hidden" id="toast"></div>
     `;
-    this.artifactValueEl = root.querySelector('#artifact-value')!;
+    this.healthFillEl = root.querySelector('#health-fill')!;
+    this.hungerValueEl = root.querySelector('#hunger-value')!;
+    this.thirstValueEl = root.querySelector('#thirst-value')!;
+    this.backpackButtonEl = root.querySelector('#backpack-btn')!;
     this.missionTextEl = root.querySelector('#mission-banner')!;
     this.hintEl = root.querySelector('#hint')!;
     this.toastEl = root.querySelector('#toast')!;
@@ -24,8 +37,14 @@ export class HUD {
     }, 6000);
   }
 
-  setArtifactCount(found: number, total: number): void {
-    this.artifactValueEl.textContent = `${found}/${total}`;
+  onBackpackClick(handler: () => void): void {
+    this.backpackButtonEl.addEventListener('click', handler);
+  }
+
+  setSurvivalStats(health: number, hunger: number, thirst: number): void {
+    this.healthFillEl.style.width = `${Math.max(0, Math.min(100, health))}%`;
+    this.hungerValueEl.textContent = String(Math.round(hunger));
+    this.thirstValueEl.textContent = String(Math.round(thirst));
   }
 
   setMission(text: string): void {

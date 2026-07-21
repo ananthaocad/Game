@@ -2,22 +2,29 @@ import * as THREE from 'three';
 import { CameraRig } from './CameraRig';
 import { InputController } from './InputController';
 import { MovementInput } from './MovementInput';
+import { Inventory } from './Inventory';
 import { createSkyDome } from '../render/SkyDome';
 import { createTerrain } from '../render/Terrain';
 import { createRubbleMesh, createBrokenWallMesh, createDeadTreeMesh } from '../entities/meshFactories';
 import { Player } from '../entities/Player';
-import { Artifact, ARTIFACT_PICKUP_RADIUS } from '../entities/Artifact';
+import { Loot, LOOT_PICKUP_RADIUS } from '../entities/Loot';
 import { Beacon, BEACON_REACH_RADIUS } from '../entities/Beacon';
+import { ITEM_DEFS } from '../data/items';
 import { HUD } from '../ui/HUD';
+import { InventoryPanel } from '../ui/InventoryPanel';
 
 const HORIZON_COLOR = 0xc9a878;
 const WORLD_SIZE = 90;
 
-const ARTIFACT_POSITIONS: [number, number][] = [
-  [10, -8],
-  [-14, 6],
-  [6, 14],
-  [-9, -16],
+const LOOT_SPAWNS: [number, number, string, number][] = [
+  [10, -8, 'machete', 1],
+  [-14, 6, 'vest', 1],
+  [6, 14, 'cannedFood', 3],
+  [-9, -16, 'waterBottle', 3],
+  [14, 10, 'scrap', 5],
+  [-6, 14, 'cloth', 4],
+  [2, -20, 'medkit', 1],
+  [-18, 4, 'helmet', 1],
 ];
 
 type DecorKind = 'rubble' | 'wall' | 'deadTree';
@@ -39,21 +46,24 @@ const DECOR_POSITIONS: [number, number, DecorKind][] = [
 
 const BEACON_POSITION: [number, number] = [0, -34];
 
-type MissionStage = 'collect' | 'beacon' | 'complete';
+type MissionStage = 'scavenge' | 'beacon' | 'complete';
 
 export class Game {
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene = new THREE.Scene();
   private readonly cameraRig: CameraRig;
   private readonly movement: MovementInput;
+  private readonly inventory = new Inventory();
   private readonly hud: HUD;
+  private readonly inventoryPanel: InventoryPanel;
   private readonly clock = new THREE.Clock();
 
   private readonly player: Player;
-  private readonly artifacts: Artifact[] = [];
+  private readonly loot: Loot[] = [];
   private readonly beacon: Beacon;
-  private artifactsFound = 0;
-  private missionStage: MissionStage = 'collect';
+  private lootCollected = 0;
+  private missionStage: MissionStage = 'scavenge';
+  private hasAnnouncedCollapse = false;
 
   constructor(canvas: HTMLCanvasElement, hudRoot: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -67,6 +77,10 @@ export class Game {
     this.cameraRig = new CameraRig(this.aspect, WORLD_SIZE / 2);
     this.hud = new HUD(hudRoot);
     this.movement = new MovementInput(hudRoot);
+    this.inventoryPanel = new InventoryPanel(hudRoot, this.inventory, {
+      onConsume: (itemId) => this.player.consume(ITEM_DEFS[itemId]),
+    });
+    this.hud.onBackpackClick(() => this.inventoryPanel.toggle());
 
     this.scene.add(createSkyDome());
     this.setupLights();
@@ -79,17 +93,17 @@ export class Game {
     this.player = new Player(new THREE.Vector3(0, 0, 0), WORLD_SIZE / 2);
     this.scene.add(this.player.group);
 
-    for (const [x, z] of ARTIFACT_POSITIONS) {
-      const artifact = new Artifact(new THREE.Vector3(x, 0, z));
-      this.artifacts.push(artifact);
-      this.scene.add(artifact.group);
+    for (const [x, z, itemId, quantity] of LOOT_SPAWNS) {
+      const drop = new Loot(new THREE.Vector3(x, 0, z), itemId, quantity);
+      this.loot.push(drop);
+      this.scene.add(drop.group);
     }
 
     this.beacon = new Beacon(new THREE.Vector3(BEACON_POSITION[0], 0, BEACON_POSITION[1]));
     this.scene.add(this.beacon.group);
 
-    this.hud.setArtifactCount(0, this.artifacts.length);
-    this.hud.setMission('Recover the scattered artifacts');
+    this.hud.setSurvivalStats(this.player.health, this.player.hunger, this.player.thirst);
+    this.hud.setMission('Scavenge supplies before the wasteland gets you');
 
     new InputController(canvas, this.cameraRig, () => this.aspect);
 
@@ -143,38 +157,45 @@ export class Game {
   private tick(): void {
     const dt = Math.min(this.clock.getDelta(), 0.1);
 
-    const move = this.movement.getVector();
+    // Freeze movement while the inventory sheet covers the screen, same as the ad's game pausing action underneath the panel.
+    const move = this.inventoryPanel.isOpen ? { x: 0, y: 0 } : this.movement.getVector();
     const worldDir = this.cameraRig.worldDirection(move.x, move.y);
     this.player.update(worldDir.x, worldDir.z, dt);
+    this.player.updateSurvival(dt);
     this.cameraRig.followTarget(this.player.position, dt);
 
-    this.updateArtifacts(dt);
+    this.updateLoot(dt);
     this.beacon.update(dt);
     this.updateMission();
+    this.updateSurvivalHud();
 
     this.renderer.render(this.scene, this.cameraRig.camera);
   }
 
-  private updateArtifacts(dt: number): void {
-    for (const artifact of this.artifacts) {
-      if (artifact.collected) continue;
-      artifact.update(dt);
-      const dist = artifact.position.distanceTo(this.player.position);
-      if (dist <= ARTIFACT_PICKUP_RADIUS) {
-        artifact.collect();
-        this.artifactsFound += 1;
-        this.hud.setArtifactCount(this.artifactsFound, this.artifacts.length);
-        this.hud.showToast('Artifact recovered');
+  private updateLoot(dt: number): void {
+    for (const drop of this.loot) {
+      if (drop.collected) continue;
+      drop.update(dt);
+      const dist = drop.position.distanceTo(this.player.position);
+      if (dist <= LOOT_PICKUP_RADIUS) {
+        const leftover = this.inventory.add(drop.itemId, drop.quantity);
+        if (leftover >= drop.quantity) {
+          this.hud.showToast('Backpack full');
+          continue;
+        }
+        drop.collect();
+        this.lootCollected += 1;
+        this.hud.showToast(`Found ${ITEM_DEFS[drop.itemId].name}`);
       }
     }
   }
 
   private updateMission(): void {
-    if (this.missionStage === 'collect' && this.artifactsFound >= this.artifacts.length) {
+    if (this.missionStage === 'scavenge' && this.lootCollected >= this.loot.length) {
       this.missionStage = 'beacon';
       this.beacon.setActive(true);
-      this.hud.setMission('A signal calls — reach the beacon');
-      this.hud.showToast('New objective: reach the beacon');
+      this.hud.setMission('A signal calls — reach the extraction point');
+      this.hud.showToast('New objective: reach the extraction point');
       return;
     }
 
@@ -183,9 +204,17 @@ export class Game {
       if (dist <= BEACON_REACH_RADIUS) {
         this.beacon.reached = true;
         this.missionStage = 'complete';
-        this.hud.setMission('Signal secured. The wasteland is quiet — for now.');
+        this.hud.setMission('Extraction secured. Hold what you scavenged.');
         this.hud.showToast('Mission complete');
       }
+    }
+  }
+
+  private updateSurvivalHud(): void {
+    this.hud.setSurvivalStats(this.player.health, this.player.hunger, this.player.thirst);
+    if (!this.player.isAlive && !this.hasAnnouncedCollapse) {
+      this.hasAnnouncedCollapse = true;
+      this.hud.showToast('You collapsed from exposure');
     }
   }
 }

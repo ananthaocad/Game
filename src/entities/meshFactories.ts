@@ -54,33 +54,48 @@ export function createSurvivorMesh(): SurvivorParts {
   return { group, bobRoot };
 }
 
-export interface ArtifactParts {
+export interface LootParts {
   group: THREE.Group;
   spinRoot: THREE.Group;
 }
 
-/** Glowing scavenged relic: rotates and bobs in place until picked up. */
-export function createArtifactMesh(): ArtifactParts {
+/** Common scavenge find: a strapped supply crate, glowing faintly so it reads against the dust. */
+export function createCrateMesh(): LootParts {
   const group = new THREE.Group();
-
-  const base = mesh(new THREE.CylinderGeometry(0.02, 0.2, 0.08, 8), 0x2c2a26, 0.2);
-  base.position.y = 0.02;
-  group.add(base);
-
   const spinRoot = new THREE.Group();
-  spinRoot.position.y = 0.55;
   group.add(spinRoot);
 
-  const core = mesh(new THREE.OctahedronGeometry(0.26, 0), 0x7fe3d4, 0.9);
-  (core.material as THREE.MeshToonMaterial).emissive = new THREE.Color(0x2fae9e);
-  spinRoot.add(core);
+  const box = mesh(new THREE.BoxGeometry(0.34, 0.3, 0.34), 0x6b5a3f, 0.3);
+  box.position.y = 0.15;
+  spinRoot.add(box);
 
-  const shard = mesh(new THREE.OctahedronGeometry(0.14, 0), 0xbdf5ea, 0.9);
-  shard.position.set(0.02, 0.02, 0.02);
-  shard.rotation.set(0.4, 0.6, 0.2);
-  spinRoot.add(shard);
+  const strap = mesh(new THREE.BoxGeometry(0.36, 0.05, 0.06), 0x3a3226, 0.2);
+  strap.position.y = 0.2;
+  spinRoot.add(strap);
 
-  const glow = new THREE.PointLight(0x6be8d4, 1.1, 3.2);
+  const glow = new THREE.PointLight(0xffcf8a, 0.5, 1.8);
+  glow.position.y = 0.35;
+  spinRoot.add(glow);
+
+  return { group, spinRoot };
+}
+
+/** Rarer scavenge find (weapons/gear): a latched case with a stronger, cooler glow. */
+export function createGearCaseMesh(): LootParts {
+  const group = new THREE.Group();
+  const spinRoot = new THREE.Group();
+  group.add(spinRoot);
+
+  const box = mesh(new THREE.BoxGeometry(0.4, 0.24, 0.3), 0x4a5648, 0.35);
+  box.position.y = 0.14;
+  spinRoot.add(box);
+
+  const latch = mesh(new THREE.BoxGeometry(0.08, 0.06, 0.06), 0xd8c9a3, 0.2);
+  latch.position.set(0, 0.2, 0.16);
+  spinRoot.add(latch);
+
+  const glow = new THREE.PointLight(0x6be8d4, 0.9, 2.6);
+  glow.position.y = 0.32;
   spinRoot.add(glow);
 
   return { group, spinRoot };

@@ -47,8 +47,35 @@ body {
   left: 10px;
   right: 10px;
   display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
   pointer-events: none;
+}
+
+#hud .stat-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+#hud .health-pill {
+  pointer-events: auto;
+  width: 72px;
+  height: 14px;
+  border-radius: 999px;
+  background: rgba(30, 26, 20, 0.75);
+  border: 1px solid rgba(255, 180, 102, 0.3);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+#hud .health-fill {
+  height: 100%;
+  width: 100%;
+  background: #7fd858;
+  transition: width 0.2s ease;
 }
 
 #hud .resource-pill {
@@ -69,7 +96,19 @@ body {
 
 #hud .resource-pill .icon {
   font-size: 15px;
-  color: #6be8d4;
+}
+
+#hud .backpack-btn {
+  pointer-events: auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(30, 26, 20, 0.75);
+  border: 1px solid rgba(255, 180, 102, 0.3);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  font-size: 17px;
+  color: #f0e2c8;
+  cursor: pointer;
 }
 
 #hud .mission-banner {
@@ -149,4 +188,172 @@ body {
   background: rgba(255, 180, 102, 0.65);
   border: 1px solid rgba(255, 220, 180, 0.6);
   pointer-events: none;
+}
+
+#hud .inventory-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 8, 6, 0.55);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  pointer-events: auto;
+  z-index: 20;
+}
+
+#hud .inventory-overlay.hidden {
+  display: none;
+}
+
+#hud .inventory-card {
+  width: 100%;
+  max-width: 480px;
+  max-height: 82dvh;
+  background: rgba(24, 21, 16, 0.97);
+  border: 1px solid rgba(255, 180, 102, 0.3);
+  border-radius: 18px 18px 0 0;
+  padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: #f0e2c8;
+  overflow-y: auto;
+}
+
+#hud .inventory-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  font-size: 14px;
+}
+
+#hud .icon-btn {
+  pointer-events: auto;
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: #f0e2c8;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+#hud .inventory-body {
+  display: flex;
+  gap: 10px;
+}
+
+#hud .inventory-grid-area {
+  flex: 1;
+  min-width: 0;
+}
+
+#hud .slot-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(240, 226, 200, 0.6);
+  margin: 6px 0 4px;
+}
+
+#hud .slot-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+#hud .slot {
+  position: relative;
+  aspect-ratio: 1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+#hud .slot.selected {
+  border-color: #ffb066;
+  box-shadow: 0 0 0 1px #ffb066 inset;
+}
+
+#hud .slot-qty {
+  position: absolute;
+  bottom: 2px;
+  right: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #ffe6c2;
+}
+
+#hud .equip-column {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 52px;
+}
+
+#hud .equip-slot {
+  aspect-ratio: 1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  pointer-events: auto;
+  color: inherit;
+}
+
+#hud .equip-slot .slot-icon.empty {
+  opacity: 0.35;
+}
+
+#hud .action-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+}
+
+#hud .action-bar.hidden {
+  display: none;
+}
+
+#hud .action-item-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+#hud .action-btn {
+  pointer-events: auto;
+  background: rgba(255, 180, 102, 0.85);
+  border: none;
+  color: #241a0d;
+  font-weight: 700;
+  font-size: 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+#hud .stats-footer {
+  display: flex;
+  justify-content: space-around;
+  font-size: 13px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }

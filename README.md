@@ -8,17 +8,26 @@ reworked into a dusty post-apocalyptic wasteland palette.
 
 ## Current slice
 
-A free-roam exploration + small-mission vertical slice:
+A free-roam exploration + scavenge-and-gear-up vertical slice, modeled on
+the loot loop mobile survival-game ads promise (grid inventory, equip
+slots, hunger/thirst/health) rather than a bare collectible counter:
 
 - Fixed-angle orthographic (isometric) camera that follows the player;
   pinch/wheel to zoom
 - Virtual joystick (touch) or WASD/arrow keys (desktop) move the survivor
   directly around a ruined wasteland scattered with rubble, broken walls,
   and dead trees
-- Scavenge glowing artifacts scattered across the map by walking up to them
-- Once every artifact is recovered, a signal beacon lights up in the
+- Health, hunger, and thirst drain over time; starving on either drains
+  health
+- Scavenge crates and gear cases scattered across the map by walking up to
+  them — resources, food/water/medkits, a weapon, and armor pieces
+- A grid inventory (pockets + backpack) with stacking, splitting, and a
+  five-slot equip paperdoll (weapon/helmet/vest/pants/boots); equipping
+  gear raises attack/defense, consumables restore hunger/thirst/health
+- Once every drop is scavenged, a signal beacon lights up in the
   distance — reach it to complete the mission
-- HUD: artifact counter, mission objective banner, pickup/objective toasts
+- HUD: health/hunger/thirst readouts, backpack button opening the
+  inventory sheet, mission objective banner, pickup/objective toasts
 
 ## Develop
 
@@ -42,16 +51,18 @@ npm run preview
 
 ```
 src/
-  core/       Game orchestration, camera rig, zoom input, movement input
+  core/       Game orchestration, camera rig, zoom input, movement input,
+              Inventory (grid + equip slots)
+  data/       Item definitions (icons, stack sizes, equip/stat effects)
   render/     Painterly toon material, sky dome, terrain generation
-  entities/   Player, Artifact, Beacon, low-poly mesh factories
-  ui/         HUD, virtual joystick
+  entities/   Player (with survival stats), Loot, Beacon, mesh factories
+  ui/         HUD, virtual joystick, InventoryPanel
 ```
 
 ## Next steps
 
 - More mission variety (timed objectives, escort/defend, fetch chains)
-- Enemies/hazards to avoid or fight
-- Persistent artifact/inventory collection across missions
+- Enemies/hazards to avoid or fight, weapon durability
+- Crafting recipes that consume resources into gear
 - Fog of war / limited visibility for tension
 - Save/load and a title screen
